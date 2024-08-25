@@ -1,0 +1,92 @@
+---
+title: "PracticalML_FinalProject"
+author: "YananLiu"
+date: "8/24/2024"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This final report is applying data collected from personal devices to measure the performance of human activies. Specifically, I am using data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants who perform barbell lifts correctly and incorrectly in 5 different ways, to predict the manner in which they did the exercise.
+
+For replication, The training data for this project can be found at https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+## packages to be used 
+```{r library}
+library(kernlab) #machine learning packages introduced in the course
+library(caret)
+library(rattle) 
+library(ggplot2) ## plot figures
+library(corrplot)
+library(lattice)
+```
+
+## create the project to store data and codes for easier reference and replication
+```{r loading}
+getwd() ##check the directory
+setwd("/home/rstudio/PracticalML") #set directory
+data_train <- read.csv("pml-training.csv") 
+data_test <- read.csv("ml-testing.csv")
+```
+
+## examine the both data sets first
+```{r explo}
+summary(data_train)
+summary(data_test)
+colSums(is.na(data_train)) #check missing values 
+data_train <- data_train[, -c(1:7)] #remove metadata
+colSums(is.na(data_test))
+data_test <- data_test[, -c(1:7)]
+```
+
+## Partition the traning data sets into training and validation data sets
+Before training the model, I first split the traning data sets into training and validation data sets, with 70% and 30% of the original training data sets respectively. And then we can use the validation data to validate the model performance before final testing using testing data 
+
+```{r train}
+set.seed(300)
+Partition <- createDataPartition(data_train$classe, p = 0.7, list = FALSE)
+train<- data_train[Partition, ]
+validation <- data_train[-Partition, ]
+dim(train)
+dim(validation)
+#cross validation
+cv = trainControl(method ='cv', number = 5, verboseIter = F)
+```
+
+## Three Machine learning models, decsion tree, random forest and gradient boosted
+```{r tree}
+## first ML model - Decision tree
+set.seed(300)
+DT <- train(classe ~., method = "rpart", data = train, trControl = cv)
+fancyRpartPlot(DT$finalModel) 
+```
+
+
+```{r decision}
+# Prediction performance using validation data set
+DecisionTree <- predict(DT, validation)
+DecisionTree_results <- confusionMatrix(DecisionTree, factor(validation$classe))
+DecisionTree_results
+```
+As shown in the result, the Decision Tree model does not work well this data set given less than 0.5 accuracy. 
+
+## random forest model
+```{r RF}
+set.seed(100)
+RF <- train(classe ~., data = train, method = "rf", trControl = cv)
+RandomForest <- predict(RF, validation)
+RandomForest_results <- confusionMatrix(RandomForest, factor(validation$classe))
+RandomForest_results
+```
+As shown in the results, Random Tree model fits the data very well with 100% accuracy. 
+
+## Final Remarks
+Apply the best-performing model, random forest to the test data to check its performace. 
+```{r final}
+RandomForest_test <- predict(RF, data_test)
+RandomForest_test
+```
